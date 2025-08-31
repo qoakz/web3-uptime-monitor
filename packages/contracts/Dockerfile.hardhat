@@ -1,0 +1,19 @@
+# Hardhat local blockchain
+FROM node:20-alpine
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Copy contracts and configuration
+COPY . .
+
+# Compile contracts
+RUN npm run compile
+
+# Expose Hardhat network port
+EXPOSE 8545
+
+# Start Hardhat network with auto-mining
+CMD ["npx", "hardhat", "node", "--hostname", "0.0.0.0"]

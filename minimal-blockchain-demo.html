@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Uptime Monitor - Blockchain Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <style>
+        .text-gradient {
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .btn {
+            @apply inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+        }
+        .btn-primary {
+            @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+        }
+        .btn-success {
+            @apply btn bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+        }
+        .btn-outline {
+            @apply btn border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500;
+        }
+        .card {
+            @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+        }
+        .badge {
+            @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+        }
+        .badge-success {
+            @apply badge bg-green-100 text-green-800;
+        }
+        .badge-warning {
+            @apply badge bg-yellow-100 text-yellow-800;
+        }
+        .badge-danger {
+            @apply badge bg-red-100 text-red-800;
+        }
+        .badge-blue {
+            @apply badge bg-blue-100 text-blue-800;
+        }
+        .input {
+            @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+        }
+        .label {
+            @apply block text-sm font-medium text-gray-700 mb-2;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gradient">Web3 Uptime Monitor</h1>
+                <div class="flex items-center space-x-4">
+                    <div id="walletStatus" class="text-sm text-gray-600">Not Connected</div>
+                    <button id="connectWallet" onclick="connectWallet()" class="btn-primary">Connect Wallet</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Blockchain Status -->
+        <div class="card mb-8">
+            <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+                <h2 class="text-lg font-semibold text-blue-900">Blockchain Integration</h2>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="label">Wallet Connection</label>
+                        <div id="connectionStatus" class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span class="text-sm text-gray-600">Disconnected</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="label">Network</label>
+                        <div id="networkInfo" class="text-sm text-gray-600">Not Connected</div>
+                    </div>
+                    <div>
+                        <label class="label">Account Balance</label>
+                        <div id="accountBalance" class="text-sm text-gray-600">0 ETH</div>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <label class="label">Smart Contract Interaction</label>
+                    <div class="space-y-3">
+                        <button id="deployContract" onclick="deployContract()" class="btn-success mr-3" disabled>
+                            Deploy Monitoring Contract
+                        </button>
+                        <button id="registerNode" onclick="registerAsNode()" class="btn-outline mr-3" disabled>
+                            Register as Monitoring Node
+                        </button>
+                        <button id="createMonitor" onclick="createBlockchainMonitor()" class="btn-primary" disabled>
+                            Create Monitor on Blockchain
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contract Addresses -->
+        <div class="card mb-8" id="contractInfo" style="display: none;">
+            <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+                <h2 class="text-lg font-semibold text-green-900">Deployed Contracts</h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="label">Monitoring Contract</label>
+                        <div id="monitoringContract" class="font-mono text-sm bg-gray-100 p-2 rounded"></div>
+                    </div>
+                    <div>
+                        <label class="label">Reward Token Contract</label>
+                        <div id="tokenContract" class="font-mono text-sm bg-gray-100 p-2 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Nodes -->
+        <div class="card mb-8">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold">Decentralized Monitoring Nodes</h2>
+            </div>
+            <div class="p-6">
+                <div id="nodesList" class="space-y-4">
+                    <!-- Nodes will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Blockchain Monitors -->
+        <div class="card">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h2 class="text-lg font-semibold">Blockchain Monitors</h2>
+                <button onclick="showAddBlockchainMonitor()" class="btn-primary" id="addBlockchainBtn" disabled>
+                    Add Blockchain Monitor
+                </button>
+            </div>
+            
+            <div class="divide-y divide-gray-200" id="blockchainMonitorsList">
+                <div class="p-8 text-center text-gray-500">
+                    Connect your wallet and deploy contracts to start monitoring
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Monitor Modal -->
+    <div id="addMonitorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold mb-4">Add Blockchain Monitor</h3>
+            <form onsubmit="submitBlockchainMonitor(event)" class="space-y-4">
+                <div>
+                    <label class="label">Website URL</label>
+                    <input type="url" id="blockchainUrl" class="input" placeholder="https://example.com" required>
+                </div>
+                <div>
+                    <label class="label">Check Interval (seconds)</label>
+                    <select id="blockchainInterval" class="input">
+                        <option value="60">1 minute</option>
+                        <option value="300" selected>5 minutes</option>
+                        <option value="600">10 minutes</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label">Reward per Check (ETH)</label>
+                    <input type="number" id="blockchainReward" class="input" value="0.001" step="0.001" min="0.001" required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="hideAddBlockchainMonitor()" class="btn-outline flex-1">Cancel</button>
+                    <button type="submit" class="btn-primary flex-1">Create on Blockchain</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let provider, signer, account;
+        let monitoringContract, tokenContract;
+        let nodes = [];
+        let blockchainMonitors = [];
+
+        // Mock contract addresses (in real implementation, these would be deployed)
+        const MOCK_MONITORING_CONTRACT = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+        const MOCK_TOKEN_CONTRACT = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    account = await signer.getAddress();
+                    
+                    // Update UI
+                    document.getElementById('walletStatus').textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
+                    document.getElementById('connectionStatus').innerHTML = `
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span class="text-sm text-green-600">Connected</span>
+                    `;
+                    
+                    // Get network info
+                    const network = await provider.getNetwork();
+                    document.getElementById('networkInfo').textContent = `${network.name} (Chain ID: ${network.chainId})`;
+                    
+                    // Get balance
+                    const balance = await provider.getBalance(account);
+                    document.getElementById('accountBalance').textContent = `${ethers.utils.formatEther(balance)} ETH`;
+                    
+                    // Enable buttons
+                    document.getElementById('deployContract').disabled = false;
+                    document.getElementById('connectWallet').textContent = 'Connected';
+                    document.getElementById('connectWallet').disabled = true;
+                    
+                    // Initialize nodes
+                    initializeNodes();
+                    
+                } catch (error) {
+                    console.error('Error connecting wallet:', error);
+                    alert('Failed to connect wallet: ' + error.message);
+                }
+            } else {
+                alert('MetaMask not detected. Please install MetaMask to use blockchain features.');
+            }
+        }
+
+        function initializeNodes() {
+            nodes = [
+                {
+                    address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+                    location: "New York, USA",
+                    status: "active",
+                    uptime: 99.8,
+                    lastSeen: new Date()
+                },
+                {
+                    address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+                    location: "London, UK",
+                    status: "active",
+                    uptime: 99.5,
+                    lastSeen: new Date()
+                },
+                {
+                    address: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+                    location: "Tokyo, Japan",
+                    status: "active",
+                    uptime: 99.9,
+                    lastSeen: new Date()
+                }
+            ];
+            renderNodes();
+        }
+
+        function renderNodes() {
+            const nodesList = document.getElementById('nodesList');
+            nodesList.innerHTML = nodes.map(node => `
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                            <div class="font-medium">${node.address.slice(0, 6)}...${node.address.slice(-4)}</div>
+                            <div class="text-sm text-gray-500">${node.location}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-medium">${node.uptime}% uptime</div>
+                        <div class="text-xs text-gray-500">Active</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deployContract() {
+            try {
+                document.getElementById('deployContract').textContent = 'Deploying...';
+                document.getElementById('deployContract').disabled = true;
+                
+                // Simulate contract deployment
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Show contract info
+                document.getElementById('contractInfo').style.display = 'block';
+                document.getElementById('monitoringContract').textContent = MOCK_MONITORING_CONTRACT;
+                document.getElementById('tokenContract').textContent = MOCK_TOKEN_CONTRACT;
+                
+                // Enable other buttons
+                document.getElementById('registerNode').disabled = false;
+                document.getElementById('createMonitor').disabled = false;
+                document.getElementById('addBlockchainBtn').disabled = false;
+                
+                document.getElementById('deployContract').textContent = 'Deployed ✓';
+                
+                alert('Smart contracts deployed successfully!');
+                
+            } catch (error) {
+                console.error('Error deploying contract:', error);
+                alert('Failed to deploy contract: ' + error.message);
+                document.getElementById('deployContract').textContent = 'Deploy Monitoring Contract';
+                document.getElementById('deployContract').disabled = false;
+            }
+        }
+
+        async function registerAsNode() {
+            try {
+                document.getElementById('registerNode').textContent = 'Registering...';
+                
+                // Simulate registration
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Add current account as a node
+                nodes.push({
+                    address: account,
+                    location: "Your Location",
+                    status: "active",
+                    uptime: 100,
+                    lastSeen: new Date()
+                });
+                
+                renderNodes();
+                document.getElementById('registerNode').textContent = 'Registered ✓';
+                
+                alert('Successfully registered as monitoring node!');
+                
+            } catch (error) {
+                console.error('Error registering node:', error);
+                alert('Failed to register node: ' + error.message);
+                document.getElementById('registerNode').textContent = 'Register as Monitoring Node';
+            }
+        }
+
+        function showAddBlockchainMonitor() {
+            document.getElementById('addMonitorModal').classList.remove('hidden');
+        }
+
+        function hideAddBlockchainMonitor() {
+            document.getElementById('addMonitorModal').classList.add('hidden');
+            document.getElementById('blockchainUrl').value = '';
+            document.getElementById('blockchainInterval').value = '300';
+            document.getElementById('blockchainReward').value = '0.001';
+        }
+
+        async function submitBlockchainMonitor(event) {
+            event.preventDefault();
+            
+            const url = document.getElementById('blockchainUrl').value;
+            const interval = document.getElementById('blockchainInterval').value;
+            const reward = document.getElementById('blockchainReward').value;
+            
+            try {
+                // Simulate blockchain transaction
+                const monitor = {
+                    id: Date.now(),
+                    url: url,
+                    interval: parseInt(interval),
+                    reward: reward,
+                    status: 'pending',
+                    contractId: Math.floor(Math.random() * 1000),
+                    assignedNodes: nodes.slice(0, 3).map(n => n.address),
+                    createdAt: new Date(),
+                    isUp: null,
+                    uptime: 100
+                };
+                
+                blockchainMonitors.push(monitor);
+                renderBlockchainMonitors();
+                hideAddBlockchainMonitor();
+                
+                // Simulate activation after 3 seconds
+                setTimeout(() => {
+                    monitor.status = 'active';
+                    monitor.isUp = Math.random() > 0.2;
+                    renderBlockchainMonitors();
+                }, 3000);
+                
+                alert('Monitor created on blockchain!');
+                
+            } catch (error) {
+                console.error('Error creating monitor:', error);
+                alert('Failed to create monitor: ' + error.message);
+            }
+        }
+
+        function renderBlockchainMonitors() {
+            const monitorsList = document.getElementById('blockchainMonitorsList');
+            
+            if (blockchainMonitors.length === 0) {
+                monitorsList.innerHTML = `
+                    <div class="p-8 text-center text-gray-500">
+                        No blockchain monitors created yet. Click "Add Blockchain Monitor" to start.
+                    </div>
+                `;
+                return;
+            }
+            
+            monitorsList.innerHTML = blockchainMonitors.map(monitor => `
+                <div class="p-6 hover:bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-3 h-3 rounded-full ${getStatusColor(monitor.isUp)}"></div>
+                            <div>
+                                <h3 class="font-medium text-gray-900">${monitor.url}</h3>
+                                <p class="text-sm text-gray-500">Contract ID: ${monitor.contractId}</p>
+                                <p class="text-sm text-gray-500">${monitor.assignedNodes.length} monitoring nodes assigned</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-6 text-sm">
+                            <div class="text-center">
+                                <div class="font-medium">${monitor.uptime}%</div>
+                                <div class="text-gray-500">Uptime</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="font-medium">${monitor.interval}s</div>
+                                <div class="text-gray-500">Interval</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="font-medium">${monitor.reward} ETH</div>
+                                <div class="text-gray-500">Reward</div>
+                            </div>
+                            <span class="badge ${getStatusBadge(monitor.status)}">
+                                ${monitor.status}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusColor(isUp) {
+            if (isUp === null) return 'bg-gray-400';
+            return isUp ? 'bg-green-500' : 'bg-red-500';
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'active': return 'badge-success';
+                case 'pending': return 'badge-warning';
+                case 'paused': return 'badge-warning';
+                default: return 'badge-danger';
+            }
+        }
+
+        async function createBlockchainMonitor() {
+            showAddBlockchainMonitor();
+        }
+
+        // Simulate real-time updates
+        setInterval(() => {
+            if (blockchainMonitors.length > 0) {
+                blockchainMonitors.forEach(monitor => {
+                    if (monitor.status === 'active' && Math.random() < 0.1) {
+                        monitor.isUp = Math.random() > 0.1;
+                        monitor.uptime = Math.max(90, monitor.uptime + (Math.random() - 0.5) * 2);
+                    }
+                });
+                renderBlockchainMonitors();
+            }
+        }, 15000);
+
+        // Initial render
+        renderBlockchainMonitors();
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    command: mongod --auth
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+
+  hardhat:
+    image: node:20-alpine
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./packages/contracts:/app
+    working_dir: /app
+    command: sh -c "npm install --legacy-peer-deps && npx hardhat node --hostname 0.0.0.0"
+
+  backend:
+    image: node:18-alpine
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./packages/backend:/app
+      - /app/node_modules
+    working_dir: /app
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - ETHEREUM_RPC_URL=http://hardhat:8545
+      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+      - CONTRACT_ADDRESS=
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - NODE_ENV=development
+      - PORT=3001
+    command: sh -c "npm install --legacy-peer-deps && npm start"
+    depends_on:
+      - mongodb
+      - redis
+      - hardhat
+
+  frontend:
+    image: node:18-alpine
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./packages/frontend:/app
+      - /app/node_modules
+    working_dir: /app
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+      - REACT_APP_WS_URL=ws://localhost:3001
+    command: sh -c "npm install --legacy-peer-deps && npm start"
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
