@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web3 Uptime Monitor - Live Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -157,12 +157,14 @@
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing app...');
             initializeApp();
             setupEventListeners();
             updateDashboard();
         });
 
         function initializeApp() {
+            console.log('Initializing app...');
             // Check if MetaMask is installed
             if (typeof window.ethereum !== 'undefined') {
                 console.log('MetaMask is installed!');
@@ -170,52 +172,139 @@
             } else {
                 console.log('MetaMask not detected');
             }
+            
+            // Check if ethers is loaded
+            if (typeof ethers !== 'undefined') {
+                console.log('Ethers library loaded successfully!');
+            } else {
+                console.log('Ethers library not loaded!');
+            }
         }
 
         function setupWeb3() {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            signer = provider.getSigner();
+            try {
+                if (typeof ethers !== 'undefined') {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    console.log('Web3 setup complete');
+                } else {
+                    console.log('Ethers not available for Web3 setup');
+                }
+            } catch (error) {
+                console.error('Error setting up Web3:', error);
+            }
         }
 
         function setupEventListeners() {
+            console.log('Setting up event listeners...');
+            
             // Connect wallet button
-            document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            const connectBtn = document.getElementById('connectWallet');
+            if (connectBtn) {
+                connectBtn.addEventListener('click', function() {
+                    console.log('Connect wallet button clicked!');
+                    connectWallet();
+                });
+                console.log('Connect wallet listener added');
+            } else {
+                console.log('Connect wallet button not found!');
+            }
             
             // Add monitor button
-            document.getElementById('addMonitor').addEventListener('click', showAddMonitorModal);
+            const addBtn = document.getElementById('addMonitor');
+            if (addBtn) {
+                addBtn.addEventListener('click', function() {
+                    console.log('Add monitor button clicked!');
+                    showAddMonitorModal();
+                });
+                console.log('Add monitor listener added');
+            } else {
+                console.log('Add monitor button not found!');
+            }
             
             // View stats button
-            document.getElementById('viewStats').addEventListener('click', showStats);
+            const statsBtn = document.getElementById('viewStats');
+            if (statsBtn) {
+                statsBtn.addEventListener('click', function() {
+                    console.log('View stats button clicked!');
+                    showStats();
+                });
+                console.log('View stats listener added');
+            } else {
+                console.log('View stats button not found!');
+            }
             
             // Refresh monitors button
-            document.getElementById('refreshMonitors').addEventListener('click', refreshMonitors);
+            const refreshBtn = document.getElementById('refreshMonitors');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    console.log('Refresh monitors button clicked!');
+                    refreshMonitors();
+                });
+                console.log('Refresh monitors listener added');
+            } else {
+                console.log('Refresh monitors button not found!');
+            }
             
             // Add monitor form
-            document.getElementById('addMonitorForm').addEventListener('submit', handleAddMonitor);
+            const form = document.getElementById('addMonitorForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    console.log('Form submitted!');
+                    handleAddMonitor(e);
+                });
+                console.log('Form listener added');
+            } else {
+                console.log('Form not found!');
+            }
             
             // Cancel add monitor
-            document.getElementById('cancelAdd').addEventListener('click', hideAddMonitorModal);
+            const cancelBtn = document.getElementById('cancelAdd');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    console.log('Cancel button clicked!');
+                    hideAddMonitorModal();
+                });
+                console.log('Cancel button listener added');
+            } else {
+                console.log('Cancel button not found!');
+            }
+            
+            console.log('All event listeners setup complete');
         }
 
         async function connectWallet() {
+            console.log('Connecting wallet...');
             try {
                 if (typeof window.ethereum !== 'undefined') {
+                    console.log('Requesting accounts...');
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     const account = accounts[0];
                     
                     if (account) {
+                        console.log('Account connected:', account);
                         isConnected = true;
                         updateWalletInfo(account);
                         updateConnectButton();
                         
-                        // Get balance
-                        const balance = await provider.getBalance(account);
-                        const ethBalance = ethers.utils.formatEther(balance);
-                        document.getElementById('walletBalance').textContent = `${parseFloat(ethBalance).toFixed(4)} ETH`;
+                        // Get balance if ethers is available
+                        if (typeof ethers !== 'undefined' && provider) {
+                            try {
+                                const balance = await provider.getBalance(account);
+                                const ethBalance = ethers.utils.formatEther(balance);
+                                document.getElementById('walletBalance').textContent = `${parseFloat(ethBalance).toFixed(4)} ETH`;
+                            } catch (balanceError) {
+                                console.log('Could not get balance:', balanceError);
+                                document.getElementById('walletBalance').textContent = '0.0000 ETH';
+                            }
+                        } else {
+                            document.getElementById('walletBalance').textContent = '0.0000 ETH';
+                        }
                         
-                        console.log('Wallet connected:', account);
+                        console.log('Wallet connected successfully');
                     }
                 } else {
+                    console.log('MetaMask not detected');
                     alert('MetaMask not detected. Please install MetaMask to connect your wallet.');
                 }
             } catch (error) {
